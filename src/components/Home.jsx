@@ -1,15 +1,31 @@
+/**
+ * @fileoverview Landing page: join an existing room or create a new group id.
+ */
+
 import React, { useState } from 'react'
 import toast from 'react-hot-toast';
-import { v4 as uuid} from "uuid" //create room
+import { v4 as uuid} from "uuid"
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Pixel-art join form. Requires both a room id and a username before navigating.
+ *
+ * @returns {JSX.Element} Full-viewport landing layout.
+ */
 const Home = () => {
-
+  /** @type {[string, function(string): void]} Room id from the input or from Create. */
   const [roomId, setRoomId] = useState("");
+  /** @type {[string, function(string): void]} Display name sent to Socket.IO `join`. */
   const [username, setUsername] = useState("");
+  /** @type {function(string, object=): void} React Router navigate helper. */
   const navigate = useNavigate();
 
-  const joinRoom= () =>{
+  /**
+   * Validates the form and opens `/editor/:roomId` with `{ username }` in location state.
+   *
+   * @returns {void}
+   */
+  const joinRoom = () => {
     if (!roomId || !username) {
       toast.error("Group ID and username are required");
       return;
@@ -22,13 +38,26 @@ const Home = () => {
     toast.success("Joined the group successfully");
   }
 
-  const generateRoomId = (event) =>{
+  /**
+   * Fills the Room ID field with a new UUID so the user can share it.
+   *
+   * @param {React.MouseEvent<HTMLButtonElement>} event Click on "Create a new group".
+   * @returns {void}
+   */
+  const generateRoomId = (event) => {
     event.preventDefault();
+    /** @type {string} Fresh collaborative room identifier. */
     const id = uuid();
     setRoomId(id);
     toast.success("Group Created Successfully");
   }
 
+  /**
+   * Form submit handler (Join button or Enter in an input).
+   *
+   * @param {React.FormEvent<HTMLFormElement>} event Native submit event.
+   * @returns {void}
+   */
   const onSubmit = (event) => {
     event.preventDefault();
     joinRoom();

@@ -1,3 +1,7 @@
+/*
+ * Global landing / chrome font. CodeMirror uses a monospace stack in App.css
+ * so editor glyphs stay aligned.
+ */
 *{
   font-family: "VT323", monospace;
   font-weight: 400;

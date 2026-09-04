@@ -51,4 +51,4 @@ COPY --from=build /usr/src/app/public ./build
 EXPOSE 3000
 
 # Run the application
-CMD ["npx", "serve", "-s", "build"]
+CMD ["npx", "serve", "-s", "public"]

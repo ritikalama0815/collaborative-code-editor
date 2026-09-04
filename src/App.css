@@ -1,3 +1,9 @@
+/*
+ * CoCo Editor layout and pixel-art chrome.
+ * Sections: landing page, editor toolbar, avatars, CodeMirror host, output panel.
+ */
+
+/* --- Landing (GIF background + join form) --- */
 .landing-page {
   min-height: 100vh;
   position: relative;
@@ -127,6 +133,7 @@
   background: #7bb4ff;
 }
 
+/* --- Collaborative editor shell --- */
 .editor-shell {
   height: 100vh;
   display: flex;
@@ -186,6 +193,7 @@
   color: #2a0a0a;
 }
 
+/* --- Avatar stack (Google Docs–style) --- */
 .user-bar {
   position: relative;
 }
@@ -247,6 +255,7 @@
   display: flex;
 }
 
+/* --- Python stdout / stderr panel --- */
 .output-panel {
   flex-shrink: 0;
   height: 160px;
@@ -288,6 +297,7 @@
   color: #ffb4b4;
 }
 
+/* --- CodeMirror: fill the remaining viewport; keep a real monospace font --- */
 .realtime-editor {
   height: 100%;
   width: 100%;

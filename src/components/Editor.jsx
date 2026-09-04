@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Collaborative room: toolbar, CodeMirror host, Python output, sockets.
+ */
+
 import React, { useEffect, useRef, useState } from 'react';
 import EditorAct from './EditorAct';
 import UserBar from './UserBar';
@@ -6,18 +10,56 @@ import toast from 'react-hot-toast';
 
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 
+/**
+ * One person in a Socket.IO room, as sent on the `joined` event.
+ * @typedef {{ socketId: string, username: string }} RoomClient
+ */
+
+/**
+ * JSON body from `POST /run`.
+ * @typedef {{ ok: boolean, output?: string, error?: string }} RunResult
+ */
+
+/**
+ * Imperative API registered by {@link EditorAct} via `onReady`.
+ * @typedef {{ setCode: function(string): void, getCode: function(): string }} EditorApi
+ */
+
+/**
+ * Editor page for `/editor/:roomId`. Redirects home if the user skipped the join form
+ * (no `location.state.username`).
+ *
+ * @returns {JSX.Element}
+ */
 const Editor = () => {
+  /** @type {[RoomClient[], function(RoomClient[]|function(RoomClient[]): RoomClient[]): void]} People currently in the room. */
   const [user, setUser] = useState([]);
+  /** @type {[boolean, function(boolean): void]} True while waiting on `POST /run`. */
   const [running, setRunning] = useState(false);
+  /** @type {[RunResult|null, function(RunResult|null): void]} Last run output or error. */
   const [runResult, setRunResult] = useState(null);
 
+  /** @type {React.MutableRefObject<import('socket.io-client').Socket|null>} Live socket for this room. */
   const socketRef = useRef(null);
+  /** @type {React.MutableRefObject<EditorApi|null>} CodeMirror helpers (`getCode` / `setCode`). */
   const editorApiRef = useRef(null);
+  /**
+   * Code that arrived over the socket before CodeMirror finished mounting.
+   * @type {React.MutableRefObject<string|null>}
+   */
   const pendingCodeRef = useRef(null);
+  /** @type {import('react-router-dom').Location} Must include `{ username }` from Home. */
   const location = useLocation();
+  /** @type {string} Shared room id from the URL. */
   const {roomId} = useParams();
+  /** @type {function(string): void} Used to leave and on connect failure. */
   const navigate = useNavigate();
 
+  /**
+   * Disconnects Socket.IO and returns to the landing page.
+   *
+   * @returns {void}
+   */
   const leaveEditor = () => {
     if (socketRef.current) {
       socketRef.current.disconnect();
@@ -26,6 +68,11 @@ const Editor = () => {
     navigate('/');
   }
 
+  /**
+   * Copies the current room id so others can paste it on the landing page.
+   *
+   * @returns {Promise<void>}
+   */
   const copyEditorID = async () => {
     try {
       await navigator.clipboard.writeText(roomId);
@@ -36,7 +83,13 @@ const Editor = () => {
     }
   }
 
+  /**
+   * POSTs the editor buffer to `/run` and stores stdout or the error in `runResult`.
+   *
+   * @returns {Promise<void>}
+   */
   const runPython = async () => {
+    /** @type {string} Current CodeMirror document, or empty if the editor is not ready. */
     const code = editorApiRef.current?.getCode() ?? '';
     if (!code.trim()) {
       setRunResult({ ok: false, error: 'There is no code to run.' });
@@ -50,6 +103,7 @@ const Editor = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
       });
+      /** @type {RunResult} Parsed runner response. */
       const data = await response.json();
       setRunResult(data);
     } catch (err) {
@@ -61,9 +115,16 @@ const Editor = () => {
   }
 
   useEffect(() => {
+    /** @type {import('socket.io-client').Socket} New connection for this room session. */
     const socket = initSocket();
     socketRef.current = socket;
 
+    /**
+     * Applies remote text now, or queues it until `onReady` runs.
+     *
+     * @param {string} code Latest document from the server.
+     * @returns {void}
+     */
     const applyRemoteCode = (code) => {
       if (!editorApiRef.current) {
         pendingCodeRef.current = code;
@@ -72,6 +133,12 @@ const Editor = () => {
       editorApiRef.current.setCode(code);
     };
 
+    /**
+     * Toast for other joiners and refresh the avatar list.
+     *
+     * @param {{ clients: RoomClient[], username: string }} payload Server `joined` payload.
+     * @returns {void}
+     */
     const handleJoined = ({ clients, username }) => {
       if (username !== location.state?.username) {
         toast.success(`${username} joined the room`);
@@ -79,15 +146,32 @@ const Editor = () => {
       setUser(clients);
     };
 
+    /**
+     * Removes a leaver from the avatar list.
+     *
+     * @param {{ socketId: string, username: string }} payload Server `disconnected` payload.
+     * @returns {void}
+     */
     const handleDisconnected = ({ socketId, username }) => {
       toast.success(`${username} left the group`);
       setUser((prev) => prev.filter((client) => client.socketId !== socketId));
     };
 
+    /**
+     * Applies a document broadcast from another client (or the initial snapshot).
+     *
+     * @param {{ code: string }} payload Server `code-change` payload.
+     * @returns {void}
+     */
     const handleCodeChange = ({ code }) => {
       applyRemoteCode(code);
     };
 
+    /**
+     * Emits `join` after the socket is connected.
+     *
+     * @returns {void}
+     */
     const joinRoom = () => {
       toast.success('User connected successfully');
       socket.emit('join', {

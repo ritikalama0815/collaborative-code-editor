@@ -1,14 +1,40 @@
+/**
+ * @fileoverview Toolbar avatar stack and popover listing who is in the room.
+ */
+
 import React, { useEffect, useRef, useState } from 'react'
 import Avatar from 'react-avatar';
 
+/**
+ * One connected client as stored on the editor page.
+ * @typedef {{ socketId: string, username?: string }} UserBarClient
+ */
+
+/**
+ * Overlapping avatars (newest on the right). Click opens a name list.
+ *
+ * @param {{ users: UserBarClient[] }} props `users` from the Socket.IO `joined` payload.
+ * @returns {JSX.Element}
+ */
 const UserBar = ({ users }) => {
+  /** @type {[boolean, function(boolean|function(boolean): boolean): void]} Whether the member popover is open. */
   const [open, setOpen] = useState(false);
+  /** @type {React.MutableRefObject<HTMLDivElement|null>} Root used to detect outside clicks. */
   const wrapRef = useRef(null);
+  /** @type {UserBarClient[]} Clients that have a display name. */
   const visible = users.filter((user) => user.username);
+  /** @type {UserBarClient[]} At most five avatars in the stack. */
   const shown = visible.slice(0, 5);
+  /** @type {number} Hidden count shown as `+N` when more than five people are present. */
   const extra = visible.length - shown.length;
 
   useEffect(() => {
+    /**
+     * Closes the popover when the pointer is outside the bar.
+     *
+     * @param {MouseEvent} event Document mousedown.
+     * @returns {void}
+     */
     const onPointerDown = (event) => {
       if (wrapRef.current && !wrapRef.current.contains(event.target)) {
         setOpen(false);
