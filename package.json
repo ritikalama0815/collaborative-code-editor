@@ -5,7 +5,8 @@
   "license": "ISC",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --check index.js && node smoke-test.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
